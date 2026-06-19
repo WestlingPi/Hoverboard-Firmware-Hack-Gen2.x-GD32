@@ -41,6 +41,7 @@ uint8_t pos;
 uint8_t lastPos;
 int32_t bldc_inputFilterPwm = 0;
 int32_t bldc_outputFilterPwm = 0;
+int32_t bldc_outputFilterPwm_max = 0;
 uint8_t iDrivingModeOverride = 0;
 int32_t filter_reg;
 uint8_t iFILTER_SHIFT = FILTER_SHIFT, iFILTER_SHIFTDo=FILTER_SHIFT;
@@ -287,6 +288,9 @@ void CalculateBLDC(void)
 	// Calculate low-pass filter for pwm value
 	filter_reg = filter_reg - (filter_reg >> iFILTER_SHIFT) + bldc_inputFilterPwm;
 	bldc_outputFilterPwm = filter_reg >> iFILTER_SHIFT;
+	if (ABS(bldc_outputFilterPwm)>bldc_outputFilterPwm_max) {
+		bldc_outputFilterPwm_max = ABS(bldc_outputFilterPwm);
+	}
 	
 	//bldc_outputFilterPwm = bldc_inputFilterPwm;		// does not work for drivingMode 1, low-pass is needed :-(
 

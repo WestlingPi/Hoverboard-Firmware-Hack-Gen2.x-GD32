@@ -39,6 +39,7 @@ extern float currentDC; 									// global variable for current dc
 extern float realSpeed; 									// global variable for real Speed
 extern int32_t bldc_inputFilterPwm;
 extern int32_t bldc_outputFilterPwm;
+extern int32_t bldc_outputFilterPwm_max;
 
 // from https://github.com/alex-makarov/hoverboard-firmware-hack-FOC/blob/master/Src/bldc.c
 // Changed to input int32_t since iOdom is int32_t.
@@ -96,6 +97,11 @@ typedef struct {
 uint32_t iTimeLastRx = 0;
 uint32_t iTimeNextTx = 0;
 
+extern int16_t i2cReadErrors; // Debug counter
+extern int16_t i2cReadAddrErrors; // Debug counter
+extern int16_t i2cReadTimeout; // Debug counter
+int16_t i2cReadErrorsLast = 0; // Debug counter
+
 // Send frame to steer device
 // Called from main() every 2*DELAY_IN_MAIN_LOOP = 10ms
 void RemoteUpdate(void)
@@ -120,6 +126,41 @@ void RemoteUpdate(void)
 		imu.gyroY = mpuData.gyro.y;
 		imu.gyroZ = mpuData.gyro.z;
 
+		if (i2cReadErrors!=i2cReadErrorsLast) {
+			i2cReadErrorsLast=i2cReadErrors;
+			imu.imuId = 2; // Indicate error
+			imu.accelX = i2cReadErrors;
+			imu.accelY = i2cReadAddrErrors;
+			imu.accelZ = i2cReadTimeout;
+			imu.gyroX = mpuData.gyro.x;
+			imu.gyroY = mpuData.gyro.y;
+			imu.gyroZ = mpuData.gyro.z;
+		}
+
+		imu.checksum = (uint16_t)(
+		  imu.start ^
+		  imu.imuId ^
+		  imu.accelX ^
+		  imu.accelY ^
+		  imu.accelZ ^
+		  imu.gyroX ^
+		  imu.gyroY ^
+		  imu.gyroZ);
+
+		SendBuffer(USART_REMOTE, (uint8_t*) &imu, sizeof(imu));
+	}
+	else {
+		//Send IMU data to ROS2
+		SerialImu imu;
+		imu.start = START_FRAME_IMU;
+		imu.imuId = 2; // Indicate error
+		imu.accelX = i2cReadErrors;
+		imu.accelY = i2cReadAddrErrors;
+		imu.accelZ = i2cReadTimeout;
+		imu.gyroX = 0;
+		imu.gyroY = 0;
+		imu.gyroZ = 0;
+
 		imu.checksum = (uint16_t)(
 		  imu.start ^
 		  imu.imuId ^
@@ -143,7 +184,7 @@ void RemoteUpdate(void)
 	feedback.start = START_FRAME;
 	feedback.cmd1 = bldc_inputFilterPwm;  // Not used by ROS2 hoverboard-driver
 	feedback.cmd2 = bldc_outputFilterPwm; // Not used by ROS2 hoverboard-driver
-	feedback.cmdLed = revs32;             // Not used by ROS2 hoverboard-driver
+	feedback.cmdLed = bldc_outputFilterPwm_max; // Not used by ROS2 hoverboard-driver
 	feedback.batVoltage = (int16_t) (batteryVoltage * 100); // Unit: 0.01 V
 	feedback.boardTemp = 250; // Dummy value (250 => 25 degrees)
 	feedback.speedL_meas = (int16_t) (realSpeed * 1000); // TODO: Base on revs32/revs32x instead! 1000 is just a random scale-factor. Only published by ROS2 hoverboard_driver for logging...
@@ -207,8 +248,10 @@ void RemoteCallback(void)
 				iTimeLastRx = millis();
 				bRemoteTimeout = 0;
 
-				speed = pData->speed;
-				steer = pData->steer;
+				//speed = pData->speed;
+				//steer = pData->steer;
+				speed = CLAMP(pData->speed, -100, 100); // 10 inch wheel: 75 RPM = 1m/s => Max 100 RPM should be safe
+				steer = CLAMP(pData->steer, -100, 100); // 10 inch wheel: 75 RPM = 1m/s => Max 100 RPM should be safe
 
 				ResetTimeout();	// Reset the pwm timout to avoid stopping motors
 			}
