@@ -23,7 +23,7 @@
 		#define LAYOUT 1
 		#define LAYOUT_SUB 1	// Layout 2.1.7 exisits as 2.1.7.0 and 2.1.7.1
 	#elif GD32F103		// TARGET = 2
-		#define LAYOUT 1
+		#define LAYOUT 3
 		//#define STM32F103 	// uncomment if your board has stm32f103 instead of gd32f103. Will give the max 64 Mhz for STM32
 			// Warning: will overclock gd32f103 mcu to 124 MHz and doubling current consumption. Keep GD32 to its 72 Mhz.
 	#elif GD32E230		// TARGET = 3
@@ -36,7 +36,7 @@
 	#define BLDC_SINE			// silent sine-pwm motor control, added 2025 by Robo Durden. 
 	//#define BLDC_SINE_BOOSTER		// can boost speed by 15% starting from 87% throttle.
 	
-	#define DRIVING_MODE 0	//  0=pwm, 1=speed in revs/s*1024, 2=torque in NewtonMeter*1024, 3=iOdometer
+	#define DRIVING_MODE 1	//  0=pwm, 1=speed in revs/s*1024, 2=torque in NewtonMeter*1024, 3=iOdometer
 
 	//#define SPEED_AsRevsPerSec		// Will overflow at 327 revs/s = 19620 rpm. Hoverboard motor: 14 rpm/V * 50V = 700 rpm
 
@@ -50,13 +50,13 @@
 
 
 	//#define MASTER		// uncomment for MASTER firmware.
-	//#define SLAVE			// uncomment for SLAVE firmware.
-	#define SINGLE			// uncomment if firmware is for single board and no master-slave dual board setup
+	#define SLAVE			// uncomment for SLAVE firmware.
+	//#define SINGLE			// uncomment if firmware is for single board and no master-slave dual board setup
 
 	#if defined(MASTER) || defined(SINGLE)
 		
 		// choose only one 'remote' to control the motor
-		#define REMOTE_DUMMY
+		//#define REMOTE_DUMMY
 				#ifdef REMOTE_DUMMY
 					#define REMOTE_PERIOD 6 // 3 = 3 seconds period of the zigzag curve
 					#define TEST_HALL2LED	// led the 3-led panel blink according to the hall sensors
@@ -69,7 +69,7 @@
 					#define SLAVE_ID	0		// must be unique for all hoverboards connected to the bus
 				#endif
 		//#define REMOTE_CRSF		// https://github.com/RoboDurden/Hoverboard-Firmware-Hack-Gen2.x/issues/26
-		//#define REMOTE_ROS2		// https://github.com/RoboDurden/Hoverboard-Firmware-Hack-Gen2.x/issues/122
+		#define REMOTE_ROS2		// https://github.com/RoboDurden/Hoverboard-Firmware-Hack-Gen2.x/issues/122
 		//#define REMOTE_ADC	// speed is PA2=TX and steer is PA3=RX of the masterslave header. Get 3.3V from the flash header
 												// DO NOT use the 5V/15V pin of the masterslave header for the potentiometers !!!!!!!!!
 												// SLAVE board has to be connected to the additional UART header, but 5V/15V coming from the masters masterslave header
@@ -105,7 +105,7 @@
 	#endif
 	
 	#if defined(MASTER) || defined(SLAVE)
-		#define MASTERSLAVE_USART		1 	// 	1 is usually PA2/PA3 and the original master-slave 4pin header
+		#define MASTERSLAVE_USART		2 	// 	1 is usually PA2/PA3 and the original master-slave 4pin header
 																		//	0 is usually PB6/PB7 and the empty header close to the flash-header
 																		//	2 is usually PB10/PB11 on stm32f103 boards
 	#endif
@@ -122,7 +122,7 @@
 
 
 #ifdef MASTER_OR_SINGLE
-	#define INACTIVITY_TIMEOUT 	8        	// Minutes of not driving until poweroff (not very precise)
+	#define INACTIVITY_TIMEOUT 	9        	// Minutes of not driving until poweroff (not very precise)
 
 	#define CELL_LOW_LVL1     3.5       // Gently beeps, show green battery symbol above this Level.
 	#define CELL_LOW_LVL2     3.3       // Battery almost empty, show orange battery symbol above this Level. Charge now! 
