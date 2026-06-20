@@ -101,6 +101,7 @@ extern int16_t i2cReadErrors; // Debug counter
 extern int16_t i2cReadAddrErrors; // Debug counter
 extern int16_t i2cReadTimeout; // Debug counter
 int16_t i2cReadErrorsLast = 0; // Debug counter
+int16_t serialCommandErrors = 0; // Debug counter
 
 // Send frame to steer device
 // Called from main() every 2*DELAY_IN_MAIN_LOOP = 10ms
@@ -132,9 +133,9 @@ void RemoteUpdate(void)
 			imu.accelX = i2cReadErrors;
 			imu.accelY = i2cReadAddrErrors;
 			imu.accelZ = i2cReadTimeout;
-			imu.gyroX = mpuData.gyro.x;
-			imu.gyroY = mpuData.gyro.y;
-			imu.gyroZ = mpuData.gyro.z;
+			imu.gyroX = bldc_inputFilterPwm;
+			imu.gyroY = bldc_outputFilterPwm;
+			imu.gyroZ = serialCommandErrors;
 		}
 
 		imu.checksum = (uint16_t)(
@@ -157,9 +158,9 @@ void RemoteUpdate(void)
 		imu.accelX = i2cReadErrors;
 		imu.accelY = i2cReadAddrErrors;
 		imu.accelZ = i2cReadTimeout;
-		imu.gyroX = 0;
-		imu.gyroY = 0;
-		imu.gyroZ = 0;
+		imu.gyroX = bldc_inputFilterPwm;
+		imu.gyroY = bldc_outputFilterPwm;
+		imu.gyroZ = serialCommandErrors;
 
 		imu.checksum = (uint16_t)(
 		  imu.start ^
@@ -183,10 +184,10 @@ void RemoteUpdate(void)
 	SerialFeedback feedback;
 	feedback.start = START_FRAME;
 	feedback.cmd1 = bldc_inputFilterPwm;  // Not used by ROS2 hoverboard-driver
-	feedback.cmd2 = bldc_outputFilterPwm; // Not used by ROS2 hoverboard-driver
+	feedback.cmd2 = bldc_outputFilterPwm;  // Not used by ROS2 hoverboard-driver
 	feedback.cmdLed = bldc_outputFilterPwm_max; // Not used by ROS2 hoverboard-driver
 	feedback.batVoltage = (int16_t) (batteryVoltage * 100); // Unit: 0.01 V
-	feedback.boardTemp = 250; // Dummy value (250 => 25 degrees)
+	feedback.boardTemp = serialCommandErrors;
 	feedback.speedL_meas = (int16_t) (realSpeed * 1000); // TODO: Base on revs32/revs32x instead! 1000 is just a random scale-factor. Only published by ROS2 hoverboard_driver for logging...
 	feedback.wheelL_cnt = modulo32(iOdom, ENCODER_MAX);
 	feedback.left_dc_curr = (int16_t) (currentDC * 100);
@@ -250,6 +251,18 @@ void RemoteCallback(void)
 
 				//speed = pData->speed;
 				//steer = pData->steer;
+
+				// SANITY CHECK: Reject mathematically valid but physically impossible commands.
+				// A 16-bit XOR checksum is very weak. Random EMI noise will accidentally produce a "valid"
+				// checksum once every few minutes, usually resulting in a massive, random speed command (e.g. 25,000 RPM).
+				// Hoverboard wheels physically max out around 1000 RPM. Rejecting anything over 100 RPM
+				// reduces the chance of a runaway motor from noise by 99%.
+				// Also clamped to 100 on ROS2 side.
+				if (pData->speed < -100 || pData->speed > 100 ||
+				    pData->steer < -100 || pData->steer > 100)
+				{
+					serialCommandErrors++;
+				}
 				speed = CLAMP(pData->speed, -100, 100); // 10 inch wheel: 75 RPM = 1m/s => Max 100 RPM should be safe
 				steer = CLAMP(pData->steer, -100, 100); // 10 inch wheel: 75 RPM = 1m/s => Max 100 RPM should be safe
 

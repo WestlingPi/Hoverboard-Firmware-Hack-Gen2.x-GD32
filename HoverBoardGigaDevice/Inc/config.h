@@ -49,8 +49,8 @@
 	//#define DEBUG_LED		// uncomment to activate DEBUG_LedSet(bSet,iColor) macro. iCol: 0=green, 1=organge, 2=red
 
 
-	//#define MASTER		// uncomment for MASTER firmware.
-	#define SLAVE			// uncomment for SLAVE firmware.
+	#define MASTER		// uncomment for MASTER firmware.
+	//#define SLAVE			// uncomment for SLAVE firmware.
 	//#define SINGLE			// uncomment if firmware is for single board and no master-slave dual board setup
 
 	#if defined(MASTER) || defined(SINGLE)
