@@ -264,13 +264,18 @@ void RemoteCallback(void)
 				// Hoverboard wheels physically max out around 1000 RPM. Rejecting anything over 100 RPM
 				// reduces the chance of a runaway motor from noise by 99%.
 				// Also clamped to 100 on ROS2 side.
+				// For 10 inch wheel: 75 RPM = 1m/s => Max 100 RPM should be safe
 				if (pData->speed < -100 || pData->speed > 100 ||
 				    pData->steer < -100 || pData->steer > 100)
 				{
 					serialCommandErrors++;
+					speed = 0;
+					steer = 0;
 				}
-				speed = CLAMP(pData->speed, -100, 100); // 10 inch wheel: 75 RPM = 1m/s => Max 100 RPM should be safe
-				steer = CLAMP(pData->steer, -100, 100); // 10 inch wheel: 75 RPM = 1m/s => Max 100 RPM should be safe
+				else {
+					speed = pData->speed;
+					steer = pData->steer;
+				}
 
 				ResetTimeout();	// Reset the pwm timout to avoid stopping motors
 			}
